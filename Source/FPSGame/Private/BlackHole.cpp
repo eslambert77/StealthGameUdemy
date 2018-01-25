@@ -43,7 +43,17 @@ void ABlackHole::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//InnerSphere->GetOverlappingComponents()
+	TArray<UPrimitiveComponent*> components;
+	OuterSphere->GetOverlappingComponents(components);
+	if (components.Num() > 0) {
+		for (auto& PhysicBody : components) 
+		{
+			UStaticMeshComponent* comp = Cast<UStaticMeshComponent>(PhysicBody);
+			if (comp) {
+				comp->AddRadialForce(InnerSphere->GetComponentLocation(), OuterSphere->GetScaledSphereRadius(), 1000000.0, RIF_Linear);
+			}
+		}
+	}
 
 }
 
