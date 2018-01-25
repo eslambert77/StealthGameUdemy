@@ -50,7 +50,10 @@ void ABlackHole::Tick(float DeltaTime)
 		{
 			UStaticMeshComponent* comp = Cast<UStaticMeshComponent>(PhysicBody);
 			if (comp) {
-				comp->AddRadialForce(InnerSphere->GetComponentLocation(), OuterSphere->GetScaledSphereRadius(), 1000000.0, RIF_Linear);
+
+				//FVector forceLocation = comp->GetComponentLocation() - InnerSphere->;
+				//UE_LOG(LogTemp, Warning, TEXT("compLocation.X: %f, com"), compLocation.X);
+				comp->AddRadialForce(InnerSphere->GetComponentLocation(), OuterSphere->GetScaledSphereRadius(), -2000000.0, RIF_Constant);
 			}
 		}
 	}
