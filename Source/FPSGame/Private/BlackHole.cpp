@@ -20,7 +20,7 @@ ABlackHole::ABlackHole()
 	InnerSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Inner Sphere Component"));
 	InnerSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InnerSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InnerSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	InnerSphere->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Overlap);
 	InnerSphere->SetupAttachment(MeshComp);
 
 
@@ -43,31 +43,41 @@ void ABlackHole::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	TArray<UPrimitiveComponent*> components;
-	OuterSphere->GetOverlappingComponents(components);
-	if (components.Num() > 0) {
-		for (auto& PhysicBody : components) 
+	
+	OnOverlapOuterSphere(OuterSphere);
+
+	OnOverlapInnerSphere(InnerSphere);
+	
+
+}
+
+
+void ABlackHole::OnOverlapInnerSphere(USphereComponent* innerSphere)
+{
+	TArray<UPrimitiveComponent*> innerComponents;
+	innerSphere->GetOverlappingComponents(innerComponents);
+	if (innerComponents.Num() > 0) {
+		for (auto& PhysicBody : innerComponents)
 		{
 			UStaticMeshComponent* comp = Cast<UStaticMeshComponent>(PhysicBody);
 			if (comp) {
-
-				//FVector forceLocation = comp->GetComponentLocation() - InnerSphere->;
-				//UE_LOG(LogTemp, Warning, TEXT("compLocation.X: %f, com"), compLocation.X);
-				comp->AddRadialForce(InnerSphere->GetComponentLocation(), OuterSphere->GetScaledSphereRadius(), -2000000.0, RIF_Constant);
+				comp->DestroyComponent();
 			}
 		}
 	}
-
 }
 
-void ABlackHole::NotifyActorBeginOverlap(AActor* OtherActor)
+void ABlackHole::OnOverlapOuterSphere(USphereComponent* outerSphere)
 {
-	Super::NotifyActorBeginOverlap(OtherActor);
-	AStaticMeshActor* PhysicsObject = Cast<AStaticMeshActor>(OtherActor);
-	
-	if (PhysicsObject)
-	{
-		
+	TArray<UPrimitiveComponent*> outerComponents;
+	outerSphere->GetOverlappingComponents(outerComponents);
+	if (outerComponents.Num() > 0) {
+		for (auto& PhysicBody : outerComponents)
+		{
+			UStaticMeshComponent* comp = Cast<UStaticMeshComponent>(PhysicBody);
+			if (comp) {
+				comp->AddRadialForce(outerSphere->GetComponentLocation(), outerSphere->GetScaledSphereRadius(), -2000000, RIF_Constant);
+			}
+		}
 	}
 }
-
