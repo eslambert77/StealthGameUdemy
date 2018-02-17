@@ -4,6 +4,7 @@
 #include "Perception/PawnSensingComponent.h"
 #include "DrawDebugHelpers.h"
 #include "FPSGameMode.h"
+#include "AI/Navigation/NavigationSystem.h"
 
 
 // Sets default values
@@ -25,6 +26,11 @@ void AFPSAIGuard::BeginPlay()
 	Super::BeginPlay();
 	OriginalRotation = GetActorRotation();
 	GuardState = EAIState::Idle;
+
+	if (bPatrol)
+	{
+		MoveToNextPatrolPoint();
+	}
 	
 }
 
@@ -35,6 +41,8 @@ void AFPSAIGuard::OnPawnSeen(APawn * SeenPawn)
 		return;
 	}
 
+
+	SetGuardState(EAIState::Alerted);
 	DrawDebugSphere(GetWorld(), SeenPawn->GetActorLocation(), 32.0f, 12, FColor::Emerald, false, 10.0f);
 	
 	AFPSGameMode* GM = Cast<AFPSGameMode>(GetWorld()->GetAuthGameMode());
@@ -43,7 +51,10 @@ void AFPSAIGuard::OnPawnSeen(APawn * SeenPawn)
 		GM->CompleteMission(SeenPawn, false);
 	}
 
-	SetGuardState(EAIState::Alerted);
+	AController* Controller = GetController();
+	if (Controller) {
+		Controller->StopMovement();
+	}
 }
 
 void AFPSAIGuard::OnNoiseHeard(APawn * NoiseInstigator, const FVector & Location, float Volume)
@@ -53,6 +64,7 @@ void AFPSAIGuard::OnNoiseHeard(APawn * NoiseInstigator, const FVector & Location
 		return;
 	}
 
+	SetGuardState(EAIState::Suspicious);
 
 	DrawDebugSphere(GetWorld(), Location, 32.0f, 12, FColor::Red, false, 10.0f);
 
@@ -71,7 +83,10 @@ void AFPSAIGuard::OnNoiseHeard(APawn * NoiseInstigator, const FVector & Location
 	GetWorldTimerManager().ClearTimer(TimerHandle_ResetOrientation);
 	GetWorldTimerManager().SetTimer(TimerHandle_ResetOrientation, this, &AFPSAIGuard::ResetOrientation, 3.0f);
 
-	SetGuardState(EAIState::Suspicious);
+	AController* Controller = GetController();
+	if (Controller) {
+		Controller->StopMovement();
+	}
 }
 
 void AFPSAIGuard::ResetOrientation()
@@ -81,8 +96,13 @@ void AFPSAIGuard::ResetOrientation()
 		return;
 	}
 
-	SetActorRotation(OriginalRotation);
 	SetGuardState(EAIState::Idle);
+	SetActorRotation(OriginalRotation);
+	
+	if (bPatrol)
+	{
+		MoveToNextPatrolPoint();
+	}
 }
 
 void AFPSAIGuard::SetGuardState(EAIState NewState)
@@ -96,11 +116,36 @@ void AFPSAIGuard::SetGuardState(EAIState NewState)
 	OnStateChanged(GuardState);
 }
 
+void AFPSAIGuard::MoveToNextPatrolPoint()
+{
+	if (CurrentPatrolPoint == nullptr || CurrentPatrolPoint == SecondPatrolPoint)
+	{
+		CurrentPatrolPoint = FirstPatrolPoint;
+	}
+	else
+	{
+		CurrentPatrolPoint = SecondPatrolPoint;
+	}
+
+	UNavigationSystem::SimpleMoveToActor(GetController(), CurrentPatrolPoint);
+}
+
 // Called every frame
 void AFPSAIGuard::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
+	if (CurrentPatrolPoint)
+	{
+		FVector Delta = GetActorLocation() - CurrentPatrolPoint->GetActorLocation();
+		float DistanceToGoal = Delta.Size();
+		UE_LOG(LogTemp, Warning, TEXT("Distance is %f"), DistanceToGoal)
+		if (DistanceToGoal < 65)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Distance is less than 50"))
+			MoveToNextPatrolPoint();
+		}
+	}
 }
 
 
